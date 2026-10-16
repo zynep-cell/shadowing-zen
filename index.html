@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shadowing Zen 2.0</title>
+    <title>Shadowing Zen 3.0</title>
     <style>
         :root {
             --bg-dark: #121212;
@@ -12,8 +12,8 @@
             --text-muted: #888;
             --accent: #4caf50;
             --accent-hover: #45a049;
+            --accent-secondary: #ff9800;
             --danger: #f44336;
-            --danger-hover: #d32f2f;
             --border: #333;
             --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
@@ -59,14 +59,6 @@
             padding-bottom: 10px;
         }
 
-        .info-box {
-            background: rgba(76, 175, 80, 0.1);
-            border-left: 4px solid var(--accent);
-            padding: 10px;
-            font-size: 0.9rem;
-            color: #bbb;
-        }
-
         input[type="text"], textarea, select {
             width: 100%;
             background: var(--bg-dark);
@@ -94,41 +86,37 @@
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 1rem;
+            font-size: 0.95rem;
             transition: background 0.2s;
         }
 
         button:hover { background: var(--accent-hover); }
+        .btn-hint { background: var(--accent-secondary); margin-top: 10px; display: none; width: 100%; }
+        .btn-hint:hover { background: #e68a00; }
+        .btn-delete { background: var(--danger); padding: 6px 10px; font-size: 0.8rem; }
 
-        .btn-delete {
-            background: var(--danger);
-            padding: 6px 10px;
-            font-size: 0.8rem;
-        }
-        
-        .btn-delete:hover { background: var(--danger-hover); }
-
-        .speed-controls { display: flex; gap: 10px; }
-        .speed-controls button { flex: 1; background: var(--border); color: var(--text-main); }
+        .speed-controls { display: flex; gap: 5px; flex-wrap: wrap; }
+        .speed-controls button { flex: 1; min-width: 45px; background: var(--border); color: var(--text-main); padding: 8px; font-size: 0.85rem;}
         .speed-controls button.active { background: var(--accent); }
 
-        /* Siyah ekran sorununu çözen net video container yapısı */
         .video-container {
             position: relative;
             width: 100%;
-            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            padding-bottom: 56.25%;
             background: #000;
             border-radius: 4px;
             overflow: hidden;
         }
 
         .video-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border: 0;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;
+        }
+
+        #active-mode-container {
+            display: none;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
         }
 
         #exercise-area {
@@ -161,9 +149,23 @@
             color: var(--accent);
             margin: 0 4px;
             font-weight: 500;
+            cursor: help;
+            border-bottom: 1px dashed transparent;
+            transition: border-bottom 0.2s;
         }
 
-        /* Boşluk doldurma modu için cümle içi input */
+        .word-revealed:hover {
+            border-bottom: 1px dashed var(--accent);
+        }
+
+        .hover-sentence {
+            font-size: 0.9rem;
+            color: var(--accent-secondary);
+            cursor: help;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
         .inline-blank {
             background: transparent;
             border: none;
@@ -190,6 +192,24 @@
             display: none;
         }
 
+        /* Çeviri Tooltip (Hover) */
+        #translation-tooltip {
+            display: none;
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 1000;
+            pointer-events: none;
+            border: 1px solid var(--accent);
+            max-width: 300px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
         .notebook-section {
             width: 100%;
             max-width: 1200px;
@@ -214,21 +234,24 @@
 </head>
 <body>
 
+    <!-- Tooltip Kutusu -->
+    <div id="translation-tooltip">Çevriliyor...</div>
+
     <div class="container">
         <!-- Sol Sütun: Video -->
         <div class="column">
             <h2>Video Oynatıcı</h2>
-            <div class="info-box">
-                💡 <b>Kısayol:</b> Metin yazarken videoyu durdurmak/başlatmak için klavyeden <b>Ctrl + Boşluk (Space)</b> tuşlarına aynı anda basabilirsiniz.
+            <div style="background: rgba(76, 175, 80, 0.1); padding: 10px; font-size: 0.85rem; color: #bbb;">
+                💡 <b>Kısayol:</b> Metin yazarken videoyu durdurmak/başlatmak için <b>Ctrl + Boşluk (Space)</b> tuşlarına basın.
             </div>
             <input type="text" id="vid-link" placeholder="YouTube veya TEDx Linkini Yapıştırın...">
             <button onclick="loadVideo()">Videoyu Yükle</button>
             
-            <div class="video-container" id="player-container">
-                <!-- Iframe buraya JavaScript ile enjekte edilecek -->
-            </div>
+            <div class="video-container" id="player-container"></div>
             
             <div class="speed-controls" id="speed-controls" style="display:none;">
+                <button onclick="setSpeed(0.25)" id="btn-025">0.25x</button>
+                <button onclick="setSpeed(0.50)" id="btn-050">0.50x</button>
                 <button onclick="setSpeed(0.75)" id="btn-075">0.75x</button>
                 <button onclick="setSpeed(1)" id="btn-1" class="active">1x (Normal)</button>
                 <button onclick="setSpeed(1.25)" id="btn-125">1.25x</button>
@@ -238,13 +261,19 @@
         <!-- Sağ Sütun: Egzersiz -->
         <div class="column">
             <h2>Transkript ve Çalışma Alanı</h2>
-            <div id="setup-area">
-                <textarea id="transcript" placeholder="Transkripti buraya yapıştırın... (Düz metin)"></textarea>
-                <select id="mode">
-                    <option value="word">Kelime Modu (Sırayla yaz, doğruysa açılır)</option>
-                    <option value="blank">Boşluk Doldurma Modu (Cümle içindeki kutulara yaz)</option>
-                    <option value="sentence">Cümle Modu (Cümlenin tamamını tek seferde yaz)</option>
+            
+            <!-- Aktif Mod Değiştirici (Egzersiz başladıktan sonra görünür) -->
+            <div id="active-mode-container">
+                <label style="font-size: 0.9rem; color: var(--text-muted); display: block; margin-bottom: 5px;">Çalışma Modunu Anında Değiştir:</label>
+                <select id="live-mode-select" onchange="changeModeLive()">
+                    <option value="word">Kelime Modu (Sırayla yaz)</option>
+                    <option value="blank">Boşluk Doldurma Modu</option>
+                    <option value="sentence">Cümle Modu (Tamamını yaz)</option>
                 </select>
+            </div>
+
+            <div id="setup-area">
+                <textarea id="transcript" placeholder="Transkripti buraya yapıştırın..."></textarea>
                 <button onclick="startExercise()" style="width:100%; margin-top:10px;">Egzersizi Başlat</button>
             </div>
 
@@ -252,6 +281,7 @@
                 <div class="target-indicator" id="target-indicator">Şu kelimeyi yazın: <b></b></div>
                 <div class="sentence-display" id="sentence-display"></div>
                 <input type="text" id="exercise-input" placeholder="Buraya yazın..." autocomplete="off">
+                <button id="hint-btn" class="btn-hint" onclick="giveHint()">💡 İpucu (Sıradaki Kelimeyi Göster)</button>
                 <button onclick="nextSentence()" id="next-btn" style="display: none; width: 100%;">Sonraki Cümleye Geç (Enter)</button>
             </div>
         </div>
@@ -274,12 +304,10 @@
                     <th style="width:10%">İşlem</th>
                 </tr>
             </thead>
-            <tbody id="vocab-list">
-            </tbody>
+            <tbody id="vocab-list"></tbody>
         </table>
     </div>
 
-    <!-- YouTube API (Sadece YouTube videoları oynarken kontroller için) -->
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         let ytPlayer = null;
@@ -293,72 +321,113 @@
         let originalSentence = "";
         let blanksToFill = 0;
 
-        // Video Yükleme ve Çözümleme Mantığı
+        // Video Yükleme
         function loadVideo() {
             const url = document.getElementById('vid-link').value.trim();
             const container = document.getElementById('player-container');
             const speedControls = document.getElementById('speed-controls');
             
-            // YouTube Regex
             const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
-            // TED Regex
             const tedMatch = url.match(/ted\.com\/talks\/([^?]+)/);
 
             if (ytMatch) {
                 const videoID = ytMatch[1];
                 currentVideoType = 'youtube';
                 speedControls.style.display = 'flex';
-                
-                // Iframe'i doğrudan oluştur (Siyah ekran hatasını önlemek için)
                 container.innerHTML = `<iframe id="yt-iframe" src="https://www.youtube.com/embed/${videoID}?enablejsapi=1&rel=0&autoplay=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
                 
-                // YouTube API'ye bağla (Hız kontrolü ve Play/Pause için)
                 setTimeout(() => {
-                    ytPlayer = new YT.Player('yt-iframe', {
-                        events: { 'onReady': () => setSpeed(1) }
-                    });
+                    ytPlayer = new YT.Player('yt-iframe', { events: { 'onReady': () => setSpeed(1) } });
                 }, 500);
-
             } else if (tedMatch) {
                 const tedID = tedMatch[1];
                 currentVideoType = 'ted';
-                speedControls.style.display = 'none'; // TED embed hız kontrolü dışarıdan desteklemez
+                speedControls.style.display = 'none';
                 ytPlayer = null;
-                
                 container.innerHTML = `<iframe src="https://embed.ted.com/talks/${tedID}" allowfullscreen></iframe>`;
             } else {
                 alert('Lütfen geçerli bir YouTube veya TEDx linki giriniz.');
             }
         }
 
-        // Hız Kontrolü (Sadece YouTube)
+        // Hız Kontrolü
         function setSpeed(speed) {
             if (currentVideoType === 'youtube' && ytPlayer && typeof ytPlayer.setPlaybackRate === 'function') {
                 ytPlayer.setPlaybackRate(speed);
             }
             document.querySelectorAll('.speed-controls button').forEach(btn => btn.classList.remove('active'));
+            if(speed === 0.25) document.getElementById('btn-025').classList.add('active');
+            if(speed === 0.50) document.getElementById('btn-050').classList.add('active');
             if(speed === 0.75) document.getElementById('btn-075').classList.add('active');
             if(speed === 1) document.getElementById('btn-1').classList.add('active');
             if(speed === 1.25) document.getElementById('btn-125').classList.add('active');
         }
+
+        // --- Çeviri Sistemi (Hover) ---
+        const translationCache = {};
+        let tooltipTimeout;
+
+        document.addEventListener('mouseover', (e) => {
+            if (e.target.classList.contains('word-revealed') || e.target.classList.contains('hover-sentence')) {
+                const textToTranslate = e.target.dataset.text;
+                if (!textToTranslate) return;
+                
+                const tooltip = document.getElementById('translation-tooltip');
+                tooltip.style.display = 'block';
+                tooltip.innerHTML = "Çevriliyor...";
+                
+                // Konumlandırma
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY + 20) + 'px';
+
+                if (translationCache[textToTranslate]) {
+                    tooltip.innerHTML = translationCache[textToTranslate];
+                    return;
+                }
+
+                clearTimeout(tooltipTimeout);
+                tooltipTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(textToTranslate)}&langpair=en|tr`);
+                        const data = await res.json();
+                        const translated = data.responseData.translatedText;
+                        translationCache[textToTranslate] = translated;
+                        tooltip.innerHTML = translated;
+                    } catch(err) {
+                        tooltip.innerHTML = "Çeviri alınamadı.";
+                    }
+                }, 400); // 400ms bekle (Gereksiz API isteklerini engellemek için)
+            }
+        });
+
+        document.addEventListener('mouseout', (e) => {
+            if (e.target.classList.contains('word-revealed') || e.target.classList.contains('hover-sentence')) {
+                clearTimeout(tooltipTimeout);
+                document.getElementById('translation-tooltip').style.display = 'none';
+            }
+        });
 
         // --- Egzersiz Mantığı ---
         function startExercise() {
             const rawText = document.getElementById('transcript').value.trim();
             if (!rawText) return;
 
-            // Cümleleri ayır ve temizle
             sentences = rawText.match(/[^.!?]+[.!?]+/g) || [rawText];
             sentences = sentences.map(s => s.trim().replace(/\n/g, ' ')).filter(s => s.length > 0);
-
             if (sentences.length === 0) return;
 
-            currentMode = document.getElementById('mode').value;
-            currentSentenceIndex = 0;
-
             document.getElementById('setup-area').style.display = 'none';
+            document.getElementById('active-mode-container').style.display = 'block';
             document.getElementById('exercise-area').style.display = 'flex';
             
+            currentMode = document.getElementById('live-mode-select').value;
+            currentSentenceIndex = 0;
+            renderSentence();
+        }
+
+        function changeModeLive() {
+            currentMode = document.getElementById('live-mode-select').value;
+            // Mevcut cümleyi yeni moda göre sıfırla ve yeniden çiz
             renderSentence();
         }
 
@@ -371,6 +440,9 @@
             const inputField = document.getElementById('exercise-input');
             const nextBtn = document.getElementById('next-btn');
             const indicator = document.getElementById('target-indicator');
+            const hintBtn = document.getElementById('hint-btn');
+
+            hintBtn.style.display = 'none';
 
             if (currentSentenceIndex >= sentences.length) {
                 displayDiv.innerHTML = "<span style='color:var(--accent)'>Tebrikler! Metni tamamladınız. 🎉</span>";
@@ -405,9 +477,7 @@
                         e.target.value = '';
                         updateWordModeDisplay();
                         
-                        if (currentWordIndex >= targetWords.length) {
-                            finishSentenceUI();
-                        }
+                        if (currentWordIndex >= targetWords.length) finishSentenceUI();
                     }
                 };
                 inputField.onkeydown = null;
@@ -422,7 +492,10 @@
                     if (e.key === 'Enter') {
                         const typed = inputField.value.trim();
                         if (cleanText(originalSentence) === cleanText(typed)) {
-                            displayDiv.innerHTML = `<span class="word-revealed">${originalSentence}</span>`;
+                            // Cümle doğru yazıldığında kelimeleri çevrilebilir formatta göster
+                            let html = targetWords.map(w => `<span class="word-revealed" data-text="${w}">${w}</span>`).join(' ');
+                            html += ` <span class="hover-sentence" data-text="${originalSentence}">[🌐 Cümleyi Çevir]</span>`;
+                            displayDiv.innerHTML = html;
                             finishSentenceUI();
                         } else {
                             inputField.style.borderColor = "var(--danger)";
@@ -433,7 +506,8 @@
             }
             // BOŞLUK DOLDURMA MODU
             else if (currentMode === 'blank') {
-                inputField.style.display = 'none'; // Ana input gizlenir, inline inputlar kullanılır
+                inputField.style.display = 'none'; 
+                hintBtn.style.display = 'block'; // İpucu butonunu göster
                 
                 const blankIndices = new Set();
                 const numBlanks = Math.max(1, Math.floor(targetWords.length * 0.35));
@@ -447,38 +521,52 @@
                 targetWords.forEach((word, idx) => {
                     if (blankIndices.has(idx)) {
                         const cleanTarget = cleanText(word);
-                        // Kelime uzunluğuna göre input genişliği
                         const width = Math.max(40, word.length * 15);
                         html += `<input type="text" class="inline-blank" data-target="${cleanTarget}" data-original="${word}" style="width:${width}px"> `;
                     } else {
-                        html += `<span>${word}</span> `;
+                        html += `<span class="word-revealed" data-text="${word}">${word}</span> `;
                     }
                 });
                 
+                // Cümle sonu çeviri simgesi (Tamamlanınca tam aktif olur ama durabilir)
+                html += ` <span class="hover-sentence" data-text="${originalSentence}" style="display:none;" id="sentence-translate-icon">[🌐 Cümleyi Çevir]</span>`;
                 displayDiv.innerHTML = html.trim();
                 
-                // İlk boşluğa odaklan
                 const firstBlank = document.querySelector('.inline-blank');
                 if(firstBlank) firstBlank.focus();
 
-                // Boşlukları dinle
                 document.querySelectorAll('.inline-blank').forEach(inp => {
                     inp.addEventListener('input', (e) => {
                         if (cleanText(e.target.value) === e.target.dataset.target) {
-                            const wordHTML = `<span class="word-revealed">${e.target.dataset.original}</span>`;
-                            e.target.outerHTML = wordHTML; // Inputu kelimeye dönüştür
-                            blanksToFill--;
-                            
-                            if (blanksToFill <= 0) {
-                                finishSentenceUI();
-                            } else {
-                                // Bir sonraki boşluğa otomatik geç
-                                const nextBlank = document.querySelector('.inline-blank');
-                                if(nextBlank) nextBlank.focus();
-                            }
+                            revealBlank(e.target);
                         }
                     });
                 });
+            }
+        }
+
+        function revealBlank(inputElement) {
+            const word = inputElement.dataset.original;
+            const wordHTML = `<span class="word-revealed" data-text="${word}">${word}</span>`;
+            inputElement.outerHTML = wordHTML;
+            blanksToFill--;
+            
+            if (blanksToFill <= 0) {
+                document.getElementById('sentence-translate-icon').style.display = 'inline-block';
+                finishSentenceUI();
+            } else {
+                const nextBlank = document.querySelector('.inline-blank');
+                if(nextBlank) nextBlank.focus();
+            }
+        }
+
+        function giveHint() {
+            // Sadece boşluk doldurma modunda çalışır
+            const currentBlank = document.querySelector('.inline-blank');
+            if(currentBlank) {
+                // Input değerini direkt doğru kelime ile değiştir ve tetikle
+                currentBlank.value = currentBlank.dataset.original;
+                revealBlank(currentBlank);
             }
         }
 
@@ -492,17 +580,24 @@
 
             targetWords.forEach((word, index) => {
                 if (index < currentWordIndex) {
-                    html += `<span class="word-revealed">${word}</span> `;
+                    html += `<span class="word-revealed" data-text="${word}">${word}</span> `;
                 } else {
                     html += `<span class="word-hidden">${word}</span> `;
                 }
             });
+
+            // Eğer cümle bittiyse genel çeviri butonunu ekle
+            if(currentWordIndex >= targetWords.length) {
+                 html += ` <span class="hover-sentence" data-text="${originalSentence}">[🌐 Cümleyi Çevir]</span>`;
+            }
+
             document.getElementById('sentence-display').innerHTML = html.trim();
         }
 
         function finishSentenceUI() {
             document.getElementById('target-indicator').style.display = 'none';
             document.getElementById('exercise-input').style.display = 'none';
+            document.getElementById('hint-btn').style.display = 'none';
             const nextBtn = document.getElementById('next-btn');
             nextBtn.style.display = 'block';
             nextBtn.focus();
@@ -517,12 +612,10 @@
         function addVocab() {
             const word = document.getElementById('vocab-word').value.trim();
             const meaning = document.getElementById('vocab-meaning').value.trim();
-            
             if (!word) return;
 
             const table = document.getElementById('vocab-list');
             const row = document.createElement('tr');
-            
             const example = originalSentence ? originalSentence : "-";
 
             row.innerHTML = `
@@ -533,7 +626,6 @@
             `;
             
             table.prepend(row);
-            
             document.getElementById('vocab-word').value = '';
             document.getElementById('vocab-meaning').value = '';
             document.getElementById('vocab-word').focus();
@@ -541,7 +633,6 @@
 
         // --- Global Klavye Kısayolları ---
         document.addEventListener('keydown', function(event) {
-            // Enter ile Deftere veya Sonraki Cümleye geçiş
             if (event.key === 'Enter') {
                 if (document.activeElement.id === 'vocab-word' || document.activeElement.id === 'vocab-meaning') {
                     addVocab();
@@ -550,16 +641,12 @@
                 }
             }
             
-            // Ctrl + Space (Boşluk) ile Videoyu Durdur/Başlat (Sadece YouTube için API destekler)
             if (event.ctrlKey && event.code === 'Space') {
-                event.preventDefault(); // Sayfayı aşağı kaydırmayı engelle
+                event.preventDefault();
                 if (currentVideoType === 'youtube' && ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
                     const state = ytPlayer.getPlayerState();
-                    if (state === 1) {
-                        ytPlayer.pauseVideo(); // Oynuyorsa durdur
-                    } else {
-                        ytPlayer.playVideo(); // Duruyorsa oynat
-                    }
+                    if (state === 1) ytPlayer.pauseVideo();
+                    else ytPlayer.playVideo();
                 }
             }
         });
