@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shadowing Zen 3.0</title>
+    <title>Shadowing Zen 4.0</title>
     <style>
         :root {
             --bg-dark: #121212;
@@ -145,6 +145,7 @@
             min-width: 40px;
         }
 
+        /* Başarıyla girilen kelimeler (Yeşil) */
         .word-revealed {
             color: var(--accent);
             margin: 0 4px;
@@ -156,6 +157,19 @@
 
         .word-revealed:hover {
             border-bottom: 1px dashed var(--accent);
+        }
+
+        /* Normal cümle kelimeleri (Beyaz - Dopamin için) */
+        .word-normal {
+            color: var(--text-main);
+            margin: 0 4px;
+            cursor: help;
+            border-bottom: 1px dashed transparent;
+            transition: border-bottom 0.2s;
+        }
+
+        .word-normal:hover {
+            border-bottom: 1px dashed var(--text-main);
         }
 
         .hover-sentence {
@@ -182,6 +196,12 @@
         .inline-blank:focus {
             border-bottom: 2px solid #fff;
             background: rgba(255,255,255,0.1);
+        }
+
+        /* İpucu Hayalet Metin (Placeholder) Stili */
+        .inline-blank::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-style: italic;
         }
 
         .target-indicator {
@@ -234,7 +254,6 @@
 </head>
 <body>
 
-    <!-- Tooltip Kutusu -->
     <div id="translation-tooltip">Çevriliyor...</div>
 
     <div class="container">
@@ -262,7 +281,6 @@
         <div class="column">
             <h2>Transkript ve Çalışma Alanı</h2>
             
-            <!-- Aktif Mod Değiştirici (Egzersiz başladıktan sonra görünür) -->
             <div id="active-mode-container">
                 <label style="font-size: 0.9rem; color: var(--text-muted); display: block; margin-bottom: 5px;">Çalışma Modunu Anında Değiştir:</label>
                 <select id="live-mode-select" onchange="changeModeLive()">
@@ -281,7 +299,7 @@
                 <div class="target-indicator" id="target-indicator">Şu kelimeyi yazın: <b></b></div>
                 <div class="sentence-display" id="sentence-display"></div>
                 <input type="text" id="exercise-input" placeholder="Buraya yazın..." autocomplete="off">
-                <button id="hint-btn" class="btn-hint" onclick="giveHint()">💡 İpucu (Sıradaki Kelimeyi Göster)</button>
+                <button id="hint-btn" class="btn-hint" onclick="giveHint()">💡 İpucu (Seçili Boşluğa Gölge Kelime Ekle)</button>
                 <button onclick="nextSentence()" id="next-btn" style="display: none; width: 100%;">Sonraki Cümleye Geç (Enter)</button>
             </div>
         </div>
@@ -321,7 +339,6 @@
         let originalSentence = "";
         let blanksToFill = 0;
 
-        // Video Yükleme
         function loadVideo() {
             const url = document.getElementById('vid-link').value.trim();
             const container = document.getElementById('player-container');
@@ -350,7 +367,6 @@
             }
         }
 
-        // Hız Kontrolü
         function setSpeed(speed) {
             if (currentVideoType === 'youtube' && ytPlayer && typeof ytPlayer.setPlaybackRate === 'function') {
                 ytPlayer.setPlaybackRate(speed);
@@ -368,7 +384,10 @@
         let tooltipTimeout;
 
         document.addEventListener('mouseover', (e) => {
-            if (e.target.classList.contains('word-revealed') || e.target.classList.contains('hover-sentence')) {
+            if (e.target.classList.contains('word-revealed') || 
+                e.target.classList.contains('word-normal') || 
+                e.target.classList.contains('hover-sentence')) {
+                
                 const textToTranslate = e.target.dataset.text;
                 if (!textToTranslate) return;
                 
@@ -376,7 +395,6 @@
                 tooltip.style.display = 'block';
                 tooltip.innerHTML = "Çevriliyor...";
                 
-                // Konumlandırma
                 tooltip.style.left = (e.pageX + 10) + 'px';
                 tooltip.style.top = (e.pageY + 20) + 'px';
 
@@ -396,18 +414,19 @@
                     } catch(err) {
                         tooltip.innerHTML = "Çeviri alınamadı.";
                     }
-                }, 400); // 400ms bekle (Gereksiz API isteklerini engellemek için)
+                }, 400); 
             }
         });
 
         document.addEventListener('mouseout', (e) => {
-            if (e.target.classList.contains('word-revealed') || e.target.classList.contains('hover-sentence')) {
+            if (e.target.classList.contains('word-revealed') || 
+                e.target.classList.contains('word-normal') || 
+                e.target.classList.contains('hover-sentence')) {
                 clearTimeout(tooltipTimeout);
                 document.getElementById('translation-tooltip').style.display = 'none';
             }
         });
 
-        // --- Egzersiz Mantığı ---
         function startExercise() {
             const rawText = document.getElementById('transcript').value.trim();
             if (!rawText) return;
@@ -427,7 +446,6 @@
 
         function changeModeLive() {
             currentMode = document.getElementById('live-mode-select').value;
-            // Mevcut cümleyi yeni moda göre sıfırla ve yeniden çiz
             renderSentence();
         }
 
@@ -461,7 +479,6 @@
             nextBtn.style.display = 'none';
             indicator.style.display = 'none';
             
-            // KELİME MODU
             if (currentMode === 'word') {
                 currentWordIndex = 0;
                 indicator.style.display = 'block';
@@ -476,13 +493,11 @@
                         currentWordIndex++;
                         e.target.value = '';
                         updateWordModeDisplay();
-                        
                         if (currentWordIndex >= targetWords.length) finishSentenceUI();
                     }
                 };
                 inputField.onkeydown = null;
             } 
-            // CÜMLE MODU
             else if (currentMode === 'sentence') {
                 displayDiv.innerHTML = "<span style='color:var(--text-muted); font-style:italic;'>Cümleyi dinleyin ve tamamını aşağıya yazıp Enter'a basın...</span>";
                 inputField.focus();
@@ -492,7 +507,6 @@
                     if (e.key === 'Enter') {
                         const typed = inputField.value.trim();
                         if (cleanText(originalSentence) === cleanText(typed)) {
-                            // Cümle doğru yazıldığında kelimeleri çevrilebilir formatta göster
                             let html = targetWords.map(w => `<span class="word-revealed" data-text="${w}">${w}</span>`).join(' ');
                             html += ` <span class="hover-sentence" data-text="${originalSentence}">[🌐 Cümleyi Çevir]</span>`;
                             displayDiv.innerHTML = html;
@@ -504,10 +518,9 @@
                     }
                 };
             }
-            // BOŞLUK DOLDURMA MODU
             else if (currentMode === 'blank') {
                 inputField.style.display = 'none'; 
-                hintBtn.style.display = 'block'; // İpucu butonunu göster
+                hintBtn.style.display = 'block'; 
                 
                 const blankIndices = new Set();
                 const numBlanks = Math.max(1, Math.floor(targetWords.length * 0.35));
@@ -521,14 +534,14 @@
                 targetWords.forEach((word, idx) => {
                     if (blankIndices.has(idx)) {
                         const cleanTarget = cleanText(word);
-                        const width = Math.max(40, word.length * 15);
+                        const width = Math.max(50, word.length * 15);
                         html += `<input type="text" class="inline-blank" data-target="${cleanTarget}" data-original="${word}" style="width:${width}px"> `;
                     } else {
-                        html += `<span class="word-revealed" data-text="${word}">${word}</span> `;
+                        // Diğer kelimeler artık "word-normal" (Beyaz)
+                        html += `<span class="word-normal" data-text="${word}">${word}</span> `;
                     }
                 });
                 
-                // Cümle sonu çeviri simgesi (Tamamlanınca tam aktif olur ama durabilir)
                 html += ` <span class="hover-sentence" data-text="${originalSentence}" style="display:none;" id="sentence-translate-icon">[🌐 Cümleyi Çevir]</span>`;
                 displayDiv.innerHTML = html.trim();
                 
@@ -547,6 +560,7 @@
 
         function revealBlank(inputElement) {
             const word = inputElement.dataset.original;
+            // Başarıyla doldurulan boşluk "word-revealed" (Yeşil) olur
             const wordHTML = `<span class="word-revealed" data-text="${word}">${word}</span>`;
             inputElement.outerHTML = wordHTML;
             blanksToFill--;
@@ -561,12 +575,16 @@
         }
 
         function giveHint() {
-            // Sadece boşluk doldurma modunda çalışır
-            const currentBlank = document.querySelector('.inline-blank');
-            if(currentBlank) {
-                // Input değerini direkt doğru kelime ile değiştir ve tetikle
-                currentBlank.value = currentBlank.dataset.original;
-                revealBlank(currentBlank);
+            // Hangi input seçiliyse onu bul, seçili yoksa ilk boş inputu bul
+            let currentBlank = document.activeElement;
+            if (!currentBlank || !currentBlank.classList.contains('inline-blank')) {
+                currentBlank = document.querySelector('.inline-blank');
+            }
+
+            if (currentBlank) {
+                // Sadece kelimeyi hayalet metin (placeholder) olarak gösterir, boşluk doldurulmaz
+                currentBlank.placeholder = currentBlank.dataset.original;
+                currentBlank.focus();
             }
         }
 
@@ -586,7 +604,6 @@
                 }
             });
 
-            // Eğer cümle bittiyse genel çeviri butonunu ekle
             if(currentWordIndex >= targetWords.length) {
                  html += ` <span class="hover-sentence" data-text="${originalSentence}">[🌐 Cümleyi Çevir]</span>`;
             }
@@ -608,7 +625,6 @@
             renderSentence();
         }
 
-        // --- Defter Mantığı ---
         function addVocab() {
             const word = document.getElementById('vocab-word').value.trim();
             const meaning = document.getElementById('vocab-meaning').value.trim();
@@ -631,7 +647,6 @@
             document.getElementById('vocab-word').focus();
         }
 
-        // --- Global Klavye Kısayolları ---
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
                 if (document.activeElement.id === 'vocab-word' || document.activeElement.id === 'vocab-meaning') {
