@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadowing Zen</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-panel: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #888;
+            --accent: #4caf50;
+            --accent-hover: #45a049;
+            --border: #333;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            line-height: 1.6;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 20px;
+        }
+
+        .column {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus {
+            border-color: var(--accent);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+
+        .speed-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .speed-controls button {
+            flex: 1;
+            background: var(--border);
+            color: var(--text-main);
+        }
+
+        .speed-controls button.active {
+            background: var(--accent);
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            border-radius: 4px;
+            overflow: hidden;
+            background: var(--bg-dark);
+        }
+
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #exercise-area {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            background: var(--bg-dark);
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .sentence-display {
+            font-size: 1.4rem;
+            min-height: 50px;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .word-hidden {
+            color: transparent;
+            border-bottom: 2px solid var(--text-muted);
+            margin: 0 4px;
+            display: inline-block;
+            min-width: 30px;
+        }
+
+        .word-revealed {
+            color: var(--accent);
+            margin: 0 4px;
+        }
+
+        .notebook-section {
+            width: 100%;
+            max-width: 1200px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .notebook-inputs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .notebook-inputs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Sol Sütun: Video -->
+        <div class="column">
+            <h2>Video Oynatıcı</h2>
+            <input type="text" id="yt-link" placeholder="YouTube Linkini Yapıştırın (Örn: https://www.youtube.com/watch?v=...)">
+            <button onclick="loadVideo()">Videoyu Yükle</button>
+            
+            <div class="video-container" id="player"></div>
+            
+            <div class="speed-controls">
+                <button onclick="setSpeed(0.75)" id="btn-075">0.75x</button>
+                <button onclick="setSpeed(1)" id="btn-1" class="active">1x</button>
+                <button onclick="setSpeed(1.25)" id="btn-125">1.25x</button>
+            </div>
+        </div>
+
+        <!-- Sağ Sütun: Egzersiz -->
+        <div class="column">
+            <h2>Transkript ve Çalışma Alanı</h2>
+            <div id="setup-area">
+                <textarea id="transcript" placeholder="Transkripti buraya yapıştırın..."></textarea>
+                <select id="mode">
+                    <option value="word">Kelime Modu (Yazdıkça Açılır)</option>
+                    <option value="sentence">Cümle Modu (Tamamını Yaz)</option>
+                    <option value="blank">Boşluk Doldurma Modu</option>
+                </select>
+                <button onclick="startExercise()" style="width:100%; margin-top:10px;">Başlat</button>
+            </div>
+
+            <div id="exercise-area">
+                <div class="sentence-display" id="sentence-display"></div>
+                <input type="text" id="exercise-input" placeholder="Buraya yazın..." autocomplete="off">
+                <button onclick="nextSentence()" id="next-btn" style="display: none;">Sonraki Cümle (Enter)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alt Kısım: Kelime Defteri -->
+    <div class="notebook-section">
+        <h2>Kelime Defteri (Zen Vocab)</h2>
+        <div class="notebook-inputs">
+            <input type="text" id="vocab-word" placeholder="Kelime">
+            <input type="text" id="vocab-meaning" placeholder="Anlamı">
+            <button onclick="addVocab()">Deftere Ekle</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Kelime</th>
+                    <th>Anlamı</th>
+                    <th>Örnek Cümle</th>
+                </tr>
+            </thead>
+            <tbody id="vocab-list">
+            </tbody>
+        </table>
+    </div>
+
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let player;
+        let sentences = [];
+        let currentSentenceIndex = 0;
+        let currentMode = 'word';
+        let targetWords = [];
+        let currentWordIndex = 0;
+        let originalSentence = "";
+
+        // YouTube API Hazırlığı
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '100%',
+                width: '100%',
+                videoId: '',
+                playerVars: { 'autoplay': 0, 'controls': 1, 'rel': 0 },
+                events: {
+                    'onReady': onPlayerReady
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            setSpeed(1);
+        }
+
+        function extractVideoID(url) {
+            let videoID = '';
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            if (match && match[2].length === 11) {
+                videoID = match[2];
+            }
+            return videoID;
+        }
+
+        function loadVideo() {
+            const url = document.getElementById('yt-link').value;
+            const videoID = extractVideoID(url);
+            if (videoID && player && player.loadVideoById) {
+                player.loadVideoById(videoID);
+            } else {
+                alert('Geçerli bir YouTube linki giriniz.');
+            }
+        }
+
+        function setSpeed(speed) {
+            if (player && player.setPlaybackRate) {
+                player.setPlaybackRate(speed);
+            }
+            document.querySelectorAll('.speed-controls button').forEach(btn => btn.classList.remove('active'));
+            if(speed === 0.75) document.getElementById('btn-075').classList.add('active');
+            if(speed === 1) document.getElementById('btn-1').classList.add('active');
+            if(speed === 1.25) document.getElementById('btn-125').classList.add('active');
+        }
+
+        // Egzersiz Mantığı
+        function startExercise() {
+            const rawText = document.getElementById('transcript').value.trim();
+            if (!rawText) return;
+
+            // Nokta, soru işareti veya ünlem işaretine göre cümlelere böl (Boş olanları filtrele)
+            sentences = rawText.match(/[^.!?]+[.!?]+/g) || [rawText];
+            sentences = sentences.map(s => s.trim()).filter(s => s.length > 0);
+
+            if (sentences.length === 0) return;
+
+            currentMode = document.getElementById('mode').value;
+            currentSentenceIndex = 0;
+
+            document.getElementById('setup-area').style.display = 'none';
+            document.getElementById('exercise-area').style.display = 'flex';
+            
+            renderSentence();
+        }
+
+        function cleanWordForCheck(word) {
+            return word.toLowerCase().replace(/[^a-z0-9']/g, "");
+        }
+
+        function renderSentence() {
+            if (currentSentenceIndex >= sentences.length) {
+                document.getElementById('sentence-display').innerHTML = "<span style='color:var(--accent)'>Tebrikler! Metni tamamladınız.</span>";
+                document.getElementById('exercise-input').style.display = 'none';
+                document.getElementById('next-btn').style.display = 'none';
+                return;
+            }
+
+            originalSentence = sentences[currentSentenceIndex];
+            const displayDiv = document.getElementById('sentence-display');
+            const inputField = document.getElementById('exercise-input');
+            const nextBtn = document.getElementById('next-btn');
+
+            inputField.value = '';
+            inputField.style.display = 'block';
+            nextBtn.style.display = 'none';
+            inputField.focus();
+
+            targetWords = originalSentence.split(' ').filter(w => w.length > 0);
+
+            if (currentMode === 'word') {
+                currentWordIndex = 0;
+                updateWordModeDisplay();
+                
+                inputField.oninput = (e) => {
+                    const typed = e.target.value.trim();
+                    const target = cleanWordForCheck(targetWords[currentWordIndex]);
+                    
+                    if (cleanWordForCheck(typed) === target) {
+                        currentWordIndex++;
+                        e.target.value = '';
+                        updateWordModeDisplay();
+                        
+                        if (currentWordIndex >= targetWords.length) {
+                            inputField.style.display = 'none';
+                            nextBtn.style.display = 'block';
+                            nextBtn.focus();
+                        }
+                    }
+                };
+                
+                inputField.onkeydown = null;
+            } 
+            else if (currentMode === 'sentence') {
+                displayDiv.innerHTML = "<span class='word-hidden' style='width:100%'>Cümleyi dinleyin ve yazın...</span>";
+                
+                inputField.oninput = null;
+                inputField.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        const typed = inputField.value.trim();
+                        // Basit doğrulama (noktalama işaretleri göz ardı edilerek)
+                        const cleanOriginal = originalSentence.toLowerCase().replace(/[^a-z0-9\s]/g, "");
+                        const cleanTyped = typed.toLowerCase().replace(/[^a-z0-9\s]/g, "");
+                        
+                        if (cleanOriginal === cleanTyped) {
+                            displayDiv.innerHTML = `<span class="word-revealed">${originalSentence}</span>`;
+                            inputField.style.display = 'none';
+                            nextBtn.style.display = 'block';
+                            nextBtn.focus();
+                        } else {
+                            inputField.style.borderColor = "red";
+                            setTimeout(() => inputField.style.borderColor = "var(--border)", 500);
+                        }
+                    }
+                };
+            }
+            else if (currentMode === 'blank') {
+                // Rastgele kelimeleri boşluk yap (yaklaşık %30'u)
+                const blankIndices = new Set();
+                const numBlanks = Math.max(1, Math.floor(targetWords.length * 0.3));
+                while(blankIndices.size < numBlanks) {
+                    blankIndices.add(Math.floor(Math.random() * targetWords.length));
+                }
+
+                let html = "";
+                targetWords.forEach((word, idx) => {
+                    if (blankIndices.has(idx)) {
+                        html += `<span class="word-hidden" data-idx="${idx}">${word}</span> `;
+                    } else {
+                        html += `<span>${word}</span> `;
+                    }
+                });
+                displayDiv.innerHTML = html.trim();
+
+                // Tüm cümleyi doğru yazmasını bekle
+                inputField.oninput = null;
+                inputField.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        const typed = inputField.value.trim();
+                        const cleanOriginal = originalSentence.toLowerCase().replace(/[^a-z0-9\s]/g, "");
+                        const cleanTyped = typed.toLowerCase().replace(/[^a-z0-9\s]/g, "");
+                        
+                        if (cleanOriginal === cleanTyped) {
+                            displayDiv.innerHTML = `<span class="word-revealed">${originalSentence}</span>`;
+                            inputField.style.display = 'none';
+                            nextBtn.style.display = 'block';
+                            nextBtn.focus();
+                        } else {
+                            inputField.style.borderColor = "red";
+                            setTimeout(() => inputField.style.borderColor = "var(--border)", 500);
+                        }
+                    }
+                };
+            }
+        }
+
+        function updateWordModeDisplay() {
+            let html = "";
+            targetWords.forEach((word, index) => {
+                if (index < currentWordIndex) {
+                    html += `<span class="word-revealed">${word}</span> `;
+                } else {
+                    html += `<span class="word-hidden">${word.replace(/[a-zA-Z0-9]/g, '_')}</span> `;
+                }
+            });
+            document.getElementById('sentence-display').innerHTML = html.trim();
+        }
+
+        function nextSentence() {
+            currentSentenceIndex++;
+            renderSentence();
+        }
+
+        // Defter mantığı
+        function addVocab() {
+            const word = document.getElementById('vocab-word').value.trim();
+            const meaning = document.getElementById('vocab-meaning').value.trim();
+            
+            if (!word) return;
+
+            const table = document.getElementById('vocab-list');
+            const row = document.createElement('tr');
+            
+            // Eğer o an ekranda çalışılan bir cümle varsa onu örnek olarak al, yoksa tire koy
+            const example = originalSentence ? originalSentence : "-";
+
+            row.innerHTML = `
+                <td><strong>${word}</strong></td>
+                <td>${meaning}</td>
+                <td style="color:var(--text-muted); font-style:italic;">${example}</td>
+            `;
+            
+            table.prepend(row); // En üste ekle
+            
+            document.getElementById('vocab-word').value = '';
+            document.getElementById('vocab-meaning').value = '';
+            document.getElementById('vocab-word').focus();
+        }
+
+        // Enter tuşu dinleyicileri (Global)
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                if (document.activeElement.id === 'vocab-word' || document.activeElement.id === 'vocab-meaning') {
+                    addVocab();
+                } else if (document.getElementById('next-btn').style.display === 'block') {
+                    nextSentence();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
